@@ -39,9 +39,10 @@ void Get_Address(ST_Table* ST, string cmd);//取得变量的地址
 string Get_Value(ST_Table* ST, Memory* Mem, string cmd);//取得变量的值
 void Variable_Add(ST_Table* ST, Memory* Mem, string cmd);//int或string的加法操作
 string Get_Type(ST_Table* ST, string var);//获得var的类型
-int Get_String_Len(ST_Table* ST, Memory* Mem, string var);
-void Int_OtherOperate(ST_Table* ST, Memory* Mem, string cmd);
+int Get_String_Len(ST_Table* ST, Memory* Mem, string var); //获取string的长度
+void Int_OtherOperate(ST_Table* ST, Memory* Mem, string cmd);//整数的减法、乘法、除法操作
 void String_Compare(ST_Table* ST, Memory* Mem, string cmd);
+void Fun_Define(ST_Table* ST, Memory* Mem, string cmd);//函数定义函数
 
 /*
 初始化ST表
@@ -85,6 +86,17 @@ int Variable_Find(ST_Table* st, string var_name) {
 }
 
 /*
+* 在ST表中寻找函数
+*/
+int Fun_Find(ST_Table* ST, string fun_name, string type) {
+    for (int i = 0; i < ST_Length; i++) {
+        if (ST[i]->Var_name == fun_name && ST[i]->Var_type == type)
+            return i;
+    }
+    return -1;
+}
+
+/*
 变量声明
 */
 void Declare_Variable(string type, ST_Table* ST, Memory* Mem) { //声明变量
@@ -120,6 +132,19 @@ void Declare_Variable(string type, ST_Table* ST, Memory* Mem) { //声明变量
 void Judge_Var_Repeat(ST_Table* ST, Memory* Mem, string var_type, string var) {
     if (Variable_Find(ST, var) != -1) {
         cout << var << " has existed!\n";
+        return;
+    }
+    else {
+        Declare_Write(ST, Mem, var_type, var);
+    }
+}
+
+/*
+* 判断函数是否重复
+*/
+void Judge_Fun_Repeat(ST_Table* ST, Memory* Mem, string var_type, string var) {
+    if (Fun_Find(ST, var, var_type) != -1) {
+        cout << var << " has existed\n";
         return;
     }
     else {
@@ -240,6 +265,27 @@ void Variable_Assignment(ST_Table* ST, Memory* Mem, string cmd) {
    
 }
 
+
+/*
+* 对函数进行赋值
+*/
+void Fun_Assignment(ST_Table* ST, Memory* Mem, string fun_name, string fun_type, string fun_body) {
+    int f = 0;
+    for (int i = 0; i < ST_Length; i++) {
+        if (ST[i]->Var_name == fun_name && ST[i]->Var_type == fun_type) {
+            int addr = ST[i]->address;
+            for (int j = 0; j < Mem_Length; j++) {
+                if (j == addr) {
+                    Mem[j]->content = fun_body;
+                    f = 1;
+                    break;
+                }
+            }
+        }
+        if (f == 1)
+            break;
+    }
+}
 /*
 * 打印符号表
 */
@@ -354,13 +400,13 @@ int is_Same_Type(ST_Table* ST, string left, string right) {
     else { //左元为string
         string left_type = Get_Type(ST, left);
         if (left_type == "string") { //左元所存的值为string
-            string right_type = Get_Type(ST, right);//右元的type
+            string right_type = Get_Type(ST, right);//右元的type,可能为string，也可能为int
             if (right_type == left_type) { //右元所存的值也为string
                 return 4; //左string右string
             }
-            else {
-                return 0; //左string右int
-            }
+            else if(right_type=="")
+                return 5;
+           
         }
         else {//左元所存为int
             if (is_Int(right) == 1) { //左(string)数字右数字
@@ -510,6 +556,31 @@ void Variable_Add(ST_Table* ST, Memory* Mem, string cmd)
                     return;
                 }
             }
+            else if (is_same_type == 5) { //string+int
+                if (type1 == "string") {
+                    string left_value = Fetch_Value(ST, Mem, left);
+                    string right_value = right;
+                    string ans = left_value + right_value;
+                    Modify_Mem_string(ST, Mem, var, ans);
+                }
+                else {
+                    cout << "Three Type not same\n";
+                    return;
+                }
+            }
+            else if (is_same_type == 6) {//int +string
+                if (type1 == "string") {
+                    string left_value = left;
+                    string right_value = Fetch_Value(ST, Mem, right);
+                    string ans = left_value + right_value;
+                    Modify_Mem_string(ST, Mem, var, ans);
+                }
+                else {
+                    cout << "Three Type not same\n";
+                    return;
+                }
+
+            }
         }
        
 
@@ -579,6 +650,7 @@ string Get_Type(ST_Table* ST, string var)
             return ST[i]->Var_type;
         }
     }
+    return "";
 }
 /*
 * 获得string的长度
@@ -1085,6 +1157,19 @@ void Compare_String(ST_Table* ST, Memory* Mem, string left_value, string right_v
    
 }
 
+
+/*
+* 去除string中的所有空格
+*/
+void trim(string& s) {
+    int len = s.length();
+    string ss;
+    for (int i = 0; i < len; i++) {
+        if (s[i] != ' ')
+            ss += s[i];
+    }
+    s = ss;
+}
 /*
 * string按位取大或取小
 */
@@ -1156,6 +1241,59 @@ void String_Compare(ST_Table* ST, Memory* Mem, string cmd)
 }
 
 
+/*
+* 定义函数
+*/
+void Fun_Define(ST_Table* ST, Memory* Mem, string cmd)
+{
+    string fun_name;
+    cin >> fun_name;
+    fun_name = fun_name.substr(0, fun_name.length() - 1);
+    getchar();
+
+    cout << "-->";
+    string return_define;
+    getline(cin, return_define);
+    trim(return_define);
+    string return_type = return_define.substr(10, return_define.length() - 10-1);
+
+    cout << "-->";
+    string argu_define;
+    getline(cin, argu_define);
+    int pos_first_space = str_match(argu_define, ' ');
+    int pos_end_argu = str_match(argu_define, ';');
+    string argu_type = argu_define.substr(pos_first_space + 1, pos_end_argu - pos_first_space - 1);
+
+    cout << "....";
+    string fun_body;//完整函数体
+    string statement;
+    string fun_body_noback;//无换行的函数体
+
+    getline(cin, statement);
+    while (statement.substr(0, 6) != "return") {
+        fun_body += statement + '\n';
+        fun_body_noback += statement;
+        cout << "....";
+        getline(cin, statement);
+    }
+    fun_body += statement+'\n';
+    fun_body_noback += statement;
+    string end_define;
+    cout << "-->";
+    getline(cin, end_define);
+    string type = "fun("+argu_type + "," + return_type+")";
+    //把returntype和argutype，写入ST中，把fun_body放入Mem中
+    Judge_Fun_Repeat(ST, Mem,type ,fun_name); //完成ST表的填写
+    Fun_Assignment(ST, Mem, fun_name, type, fun_body_noback);
+
+
+    cout << ">>>";
+    cout << "Fun body:" << endl;
+    cout << fun_body;
+    return;
+}
+
+
 
 int main() {
     ST_Table* ST;
@@ -1169,7 +1307,7 @@ int main() {
         cout << ">>>";
         string cmd = "";
         cin >> cmd;
-        if (cmd == "int" || cmd == "string" || cmd == "function") {
+        if (cmd == "int" || cmd == "string") {
             Declare_Variable(cmd, ST, Mem);
         }
         else if (str_match(cmd, '=') != -1 && str_match(cmd, '+') == -1 && str_match(cmd, ';') != -1 && str_match(cmd, '-') == -1
@@ -1208,6 +1346,10 @@ int main() {
         }
         else if (str_match(cmd, '-')!=-1 || str_match(cmd, '*')!=-1 || str_match(cmd, '/')!=-1) {
             Int_OtherOperate(ST, Mem, cmd);
+        }
+        else if (cmd.substr(0, 6) == "define") {
+            Fun_Define(ST, Mem, cmd);
+            
         }
         else if (cmd=="\n") {
      

@@ -52,18 +52,18 @@ void Remove_var(ST_Table* ST, Memory* Mem,  int temp_num);//清除临时变量
 void Help();//帮助函数
 
 void Help() {
-    cout << "支持int,string,fun三种类型" << endl;
-    cout << "int a;\t声明一个int型变量a" << endl;
-    cout << "string s:\t声明一个string行变量s" << endl;
-    cout << "支持变量的声明、赋值、取值、取地址、计算等操作" << endl;
-    cout << "int型支持+,-,*,/" << endl;
-    cout << "string型支持+,len(s)取s的长度,|按位取大,^按位取小" << endl;
-    cout << "支持if语句，目前只支持a>b的条件" << endl;
-    cout << "支持临时变量temp,无需声明" << endl;
-    cout << "Print_ST打印符号表\tPrint_Mem打印内存表" << endl;
-    cout << "支持二元函数的定义\tdefine Funname" << endl;
-    cout << "支持函数调用:call 函数(参数1,参数2)" << endl;
-    cout << "支持局部变量" << endl;
+    cout << "1.支持int,string,fun三种类型" << endl;
+    cout << "2.int a;\t声明一个int型变量a" << endl;
+    cout << "3.string s:\t声明一个string行变量s" << endl;
+    cout << "4.支持变量的声明、赋值、取值、取地址、计算等操作" << endl;
+    cout << "5.int型支持+,-,*,/" << endl;
+    cout << "6.string型支持+,len(s)取s的长度,|按位取大,^按位取小" << endl;
+    cout << "7.支持if语句，目前只支持a>b和a=b的条件" << endl;
+    cout << "8.支持临时变量temp,无需声明" << endl;
+    cout << "9.Print_ST打印符号表\tPrint_Mem打印内存表" << endl;
+    cout << "10.支持二元函数的定义\tdefine Funname" << endl;
+    cout << "11.支持函数调用:call 函数(参数1,参数2)。如果有返回值，返回值会打印出来" << endl;
+    cout << "12.支持局部变量" << endl;
 
 }
 /*
@@ -229,7 +229,7 @@ void Variable_Assignment(ST_Table* ST, Memory* Mem, string cmd) {
     }
     int f = 0;
 
-    if (Variable_Find(ST, content) == -1) { //针对b=a+1;这种右边的等式不是已有变量的情况
+    if (Variable_Find(ST, content) == -1) { //针对b=1;这种右边的等式不是已有变量的情况
         for (int i = 0; i < ST_Length; i++) {
             if (ST[i]->Var_name == var) {
                 int addr = ST[i]->address;
@@ -253,7 +253,7 @@ void Variable_Assignment(ST_Table* ST, Memory* Mem, string cmd) {
                 int addr = ST[i]->address;
                 for (int j = 0; j < Mem_Length; j++) {
                     if (j == addr) {
-                        value = Mem[j]->content;
+                        value = Mem[j]->content; //取出a中的值
                         f = 1;
                         break;
                     }
@@ -1353,12 +1353,22 @@ void Fun_Define(ST_Table* ST, Memory* Mem, string cmd)
     cout << "-->";
     string return_define;
     getline(cin, return_define);
+    if (return_define.substr(0, 10) != "returnType") {
+        cout << "Syntax Error: " << "Please Input returnType first\n";
+        return;
+    }
+
     trim(return_define);
     string return_type = return_define.substr(10, return_define.length() - 10-1);
 
     cout << "-->";
     string argu_define;
     getline(cin, argu_define);
+    if (argu_define.substr(0, 8) != "arguType") {
+        cout << "Syntax Error: " << "Please Input arguType first\n";
+        return;
+    }
+
     int pos_first_space = str_match(argu_define, ' ');
     int pos_end_argu = str_match(argu_define, ';');
     string argu_type = argu_define.substr(pos_first_space + 1, pos_end_argu - pos_first_space - 1);
@@ -1371,7 +1381,7 @@ void Fun_Define(ST_Table* ST, Memory* Mem, string cmd)
     getline(cin, statement);
     while (statement.substr(0, 6) != "return") {
         fun_body += statement + '\n';
-        fun_body_noback += statement;
+        fun_body_noback += statement; //没有换行
         cout << "....";
         getline(cin, statement);
     }
@@ -1383,7 +1393,7 @@ void Fun_Define(ST_Table* ST, Memory* Mem, string cmd)
     string type = "fun("+argu_type + "," + return_type+")";
     //把returntype和argutype，写入ST中，把fun_body放入Mem中
     Judge_Fun_Repeat(ST, Mem,type ,fun_name); //完成ST表的填写
-    Fun_Assignment(ST, Mem, fun_name, type, fun_body);
+    Fun_Assignment(ST, Mem, fun_name, type, fun_body);//完成Mem表函数体的填写
 
 
     cout << ">>>";
@@ -1404,18 +1414,26 @@ void If_Operate(ST_Table* ST, Memory* Mem, string cmd)
 {
     trim(cmd);
     int pos_big = str_match(cmd, '>');
+    int pos_eq = str_match(cmd, '=');
 
     int pos_mh = str_match(cmd, ':');
     if (pos_mh == -1) {
         cout << "SyntaxError: invalid syntax!\n";
         return;
     }
-    if (pos_big == -1) {
-        cout << "SyntaxError: Only '>' Supported!\n";
+    if (pos_big == -1 && pos_eq==-1) {
+        cout << "SyntaxError: Only '>'and '==' Supported!\n";
         return;
     }
-    string var1 = cmd.substr(2, pos_big - 2); //左元
-    string var2 = cmd.substr(pos_big + 1, pos_mh - pos_big - 1); //右元
+    string var1, var2;
+    if (pos_big != -1) {
+        var1 = cmd.substr(2, pos_big - 2); //左元
+        var2 = cmd.substr(pos_big + 1, pos_mh - pos_big - 1); //右元
+    }
+    else if (pos_eq != -1) {
+        var1 = cmd.substr(2, pos_eq - 2); //左元
+        var2 = cmd.substr(pos_eq + 1, pos_mh - pos_eq - 1); //右元
+    }
     string value1 = Fetch_Value(ST, Mem, var1);
     string value2 = Fetch_Value(ST, Mem, var2);
     if (value1 == "" || value2 == "") {
@@ -1441,12 +1459,26 @@ void If_Operate(ST_Table* ST, Memory* Mem, string cmd)
     string end_if;
     getline(cin, end_if);//endif;
 
-    //开始处理数据
-    if (value_a > value_b) {
-        Main_Switch(ST, Mem, statement1);
+    if (pos_big != -1 && pos_eq == -1) {
+        //开始处理数据
+        if (value_a > value_b) {
+            Main_Switch(ST, Mem, statement1);
+        }
+        else {
+            Main_Switch(ST, Mem, statement2);
+        }
+    }
+    else if (pos_eq != -1 && pos_big == -1) {
+        if (value_a == value_b) {
+            Main_Switch(ST, Mem, statement1);
+        }
+        else {
+            Main_Switch(ST, Mem, statement2);
+        }
     }
     else {
-        Main_Switch(ST, Mem, statement2);
+        cout << "Syntax Error:Can't use > and == both" << endl;
+        return;
     }
 }
 
@@ -1491,14 +1523,12 @@ void Main_Switch(ST_Table*ST,Memory*Mem,string cmd) {
     else if (cmd.substr(0, 6) == "define") {
         Fun_Define(ST, Mem, cmd);
     }
-    else if (cmd.substr(0, 4) == "call") {
-
-    }
     else if (cmd.substr(0, 2) == "if") {
         If_Operate(ST, Mem, cmd);
     }
     else if (cmd.substr(0, 6) == "return") {
-        string value=Return_Operate(ST, Mem, cmd);
+        string s=Return_Operate(ST, Mem, cmd);
+        cout<<"Return Value:"<<s<<endl;
     }
 
 }
@@ -1557,6 +1587,7 @@ vector<string> Fun_Split(string s, const string& seperator) {
 
 /*
 * 把一个字符串中的指定内容替换为另一个内容
+* 用来实现将函数的形参变为实参
 */
 void replace_all_ditinct(string& str, const string& old_value, const string& new_value)
 {
@@ -1596,7 +1627,7 @@ void Fun_Call(ST_Table* ST, Memory* Mem, string cmd)
          //先获得该函数的参数列表
         string type = Get_Type(ST, fun_name);
         //把参数列表fun(int a,int b,int)拆分,得到a,b这两个参数名
-        int pos_first_douhao = str_match(type, ',');//得到第一个都好的位置
+        int pos_first_douhao = str_match(type, ',');//得到第一个逗号的位置
         int pos_first_space = str_match(type, ' ');//得到第一个空格的位置
         int pos_right = str_match(type, ')');
         string a = type.substr(pos_first_space + 1, pos_first_douhao - pos_first_space - 1);//第一个参数名
